@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>ReVinzzaMods - Attack Menu </title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#000;
+      --card-bg: rgba(255,255,255,0.02);
+      --outline: rgba(255,255,255,0.12);
+      --accent:#8b5cf6;
+      --accent-2:#c084fc;
+      --muted:#bfc7cf;
+      --white-trans: rgba(255,255,255,0.06);
+      --input-outline: rgba(255,255,255,0.18);
+      --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto; color:#fff}
+    /* full-screen canvas background */
+    canvas#bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-3;display:block}
+    /* subtle overlay to dim canvas */
+    .bg-overlay{position:fixed;inset:0;background:linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.55));z-index:-2}
+
+    /* top-left menu button and sidebar */
+    .menu-btn{position:fixed;top:18px;left:18px;font-size:22px;color:var(--accent);cursor:pointer;z-index:1003;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:rgba(0,0,0,0.25)}
+    .sidebar{position:fixed;top:0;left:-300px;width:300px;height:100%;background:linear-gradient(180deg, rgba(11,7,20,0.92), rgba(2,2,6,0.95));border-right:1px solid rgba(255,255,255,0.03);box-shadow: 12px 0 40px rgba(0,0,0,0.7);padding:20px;transition:0.38s;z-index:1002;display:flex;flex-direction:column;gap:10px}
+    .sidebar.active{left:0}
+    #backdrop{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);display:none;z-index:1001}
+
+    .sidebar .user-info{display:flex;align-items:center;gap:12px;padding:8px;border-radius:12px;background:linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.015));border:1px solid rgba(255,255,255,0.02)}
+    .sidebar .user-info i{font-size:28px;color:var(--accent)}
+    .sidebar .user-info .meta{display:flex;flex-direction:column}
+    .sidebar .user-info .meta .name{font-weight:600}
+    .sidebar a{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;color:var(--muted);text-decoration:none;border:1px solid transparent}
+    .sidebar a i{width:20px;text-align:center;color:var(--accent-2)}
+    .sidebar a:hover{background:rgba(255,255,255,0.01);color:#fff}
+
+    /* phone container */
+    .wrap{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      z-index:1;
+      position:relative;
+    }
+    .phone{
+      width:420px;
+      max-width:96vw;
+      border-radius:26px;
+      overflow:hidden;
+      background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.015));
+      border:1px solid rgba(255,255,255,0.02);
+      box-shadow: 0 18px 50px rgba(0,0,0,0.7);
+      position:relative;
+    }
+    .banner{
+      height:160px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(180deg, rgba(11,7,20,0.9), rgba(0,0,0,0.9));
+      position:relative;
+      border-bottom:1px solid rgba(255,255,255,0.02);
+    }
+    .banner img{ width:56%; max-width:300px; object-fit:contain; border-radius:8px; opacity:0.98 }
+
+    .body { padding:18px 20px 26px; display:flex; flex-direction:column; gap:12px; }
+    .title{ font-family:Orbitron, monospace; font-weight:600; text-align:center; letter-spacing:1px; color:#fff; font-size:20px; }
+    .subtitle{ text-align:center; color:var(--muted); font-size:13px; margin-top:-4px; }
+
+    .row{display:flex;gap:10px}
+    .field{ display:block; width:100%; background:transparent; border-radius:14px; border:1.6px solid var(--input-outline); padding:12px 14px; color:#fff; outline:none; font-size:16px; -webkit-appearance:none; box-shadow: 0 4px 18px rgba(0,0,0,0.6) inset }
+    .field::placeholder{ color:rgba(255,255,255,0.35); letter-spacing:1px }
+
+    .select{ position:relative; border-radius:14px; border:1.6px solid var(--input-outline); overflow:hidden; background:transparent; color:#fff; }
+    .select .head{ padding:12px 14px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; font-size:15px }
+    .select .head span{ color:var(--muted) }
+    .select .list{ display:none; background:rgba(255,255,255,0.02); border-top:1px solid rgba(255,255,255,0.02); max-height:220px; overflow:auto }
+    .select .list button{ width:100%; padding:12px 14px; text-align:left; border:none; background:transparent; color:#fff; cursor:pointer; font-size:15px }
+    .select .list button:hover{ background:rgba(255,255,255,0.02); color:var(--accent-2) }
+
+    .send-wrap{text-align:center;margin-top:6px}
+    .btn-send{ display:inline-flex; align-items:center; gap:12px; justify-content:center; padding:14px 36px; border-radius:36px; border:none; background: linear-gradient(90deg,var(--accent), var(--accent-2)); color:#0b0620; font-weight:700; font-size:15px; cursor:pointer; box-shadow: 0 12px 35px rgba(139,92,246,0.20) }
+    .btn-send:active{ transform:translateY(1px) }
+    .note{ font-size:13px; color:var(--muted); text-align:center; margin-top:8px }
+
+    /* popup (modal) */
+    .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); z-index:1005 }
+    .modal .card{ width:90%; max-width:420px; padding:18px; border-radius:12px; background:#071018; border:1px solid rgba(255,255,255,0.04); text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.6) }
+    .modal .card h3{ margin:10px 0 12px; font-size:18px; color:#cbe7d8 }
+    .modal .card p{ color:var(--muted); font-size:14px; margin-bottom:12px }
+    .small-btn{ padding:10px 18px; border-radius:12px; border:none; background: linear-gradient(90deg,var(--accent), var(--accent-2)); color:#0b0620; font-weight:700; cursor:pointer }
+
+    /* responsive */
+    @media (max-width:520px){
+      .phone{ width:100%; border-radius:12px; margin:8px }
+      .banner{ height:120px }
+      .menu-btn{ left:12px; top:12px }
+    }
+  </style>
+</head>
+<body>
+  <!-- canvas background -->
+  <canvas id="bg"></canvas>
+  <div class="bg-overlay"></div>
+
+  <!-- menu button + sidebar -->
+  <div class="menu-btn" id="menuBtn" title="Open menu"><i class="fa-solid fa-bars"></i></div>
+  <div id="backdrop" onclick="toggleSidebar()"></div>
+
+  <aside class="sidebar" id="sidebar" aria-hidden="true">
+    <div class="user-info" role="group" aria-label="User info">
+      <i class="fa-solid fa-user-shield"></i>
+      <div class="meta">
+        <div class="name" id="sidebarUsername">Guest</div>
+        <div class="role" id="sidebarRole">Visitor</div>
+      </div>
+    </div>
+
+    <nav aria-label="Main navigation">
+       <a href="bug.html"><i class="fa-solid fa-bug"></i> Bug Attack</a>
+      <a href="ddos.html"><i class="fa-solid fa-bolt"></i> DDoS</a>
+      <a href="#" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Log out</a>
+    </nav>
+    <div style="margin-top:auto;color:var(--muted);font-size:13px">Server: <strong style="color:#fff">Active</strong></div>
+  </aside>
+
+  <!-- main phone container -->
+  <div class="wrap">
+    <div class="phone" role="application" aria-label="RvnzModss-Engine">
+      <div class="banner">
+        <img src="https://files.catbox.moe/mqf6ij.jpg" alt="ReVinza banner">
+      </div>
+
+      <div class="body">
+        <div>
+          <div class="title">Attack Menu</div>
+          <div class="subtitle">Pilih metode lalu tekan-SEND BUG</div>
+        </div>
+
+        <!-- target input -->
+        <input id="target" class="field" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="6289xxxxxxxxxxx" aria-label="Target number" />
+
+        <!-- select method -->
+        <div class="select" id="methodSelect" aria-haspopup="listbox">
+          <div class="head" id="methodHead" role="button" aria-expanded="false" tabindex="0">
+            <span id="methodLabel">Crash Android</span>
+            <i class="fa-solid fa-chevron-down" style="color:var(--muted)"></i>
+          </div>
+          <div class="list" role="listbox" id="methodList" aria-hidden="true">
+            <button data-value="Rvnz_crash" type="button">Crash Android</button>
+            <button data-value="crash_ios" type="button">Crash iOS</button>
+            <button data-value="delay" type="button">Delay Attack</button>
+            <button data-value="blank" type="button">Blank Payload</button>
+            <button data-value="foreclose" type="button">ForeClose</button>
+          </div>
+        </div>
+
+        <div class="send-wrap">
+          <button id="sendBtn" class="btn-send" aria-label="Send bug">
+            <i class="fa-solid fa-paper-plane" style="transform:rotate(-20deg)"></i> SEND BUG
+          </button>
+        </div>
+
+        <div class="note">Status: <strong id="serverStatus">Server Active</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- modal hasil -->
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="card">
+      <h3 id="modalTitle">Result</h3>
+      <p id="modalText">Menunggu aksi...</p>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
+        <button id="okBtn" class="small-btn">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ---------------------------
+       Safety note:  only.
+       No real attack network requests.
+       --------------------------- */
+
+    // Sidebar toggle
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('backdrop');
+    const menuBtn = document.getElementById('menuBtn');
+    function toggleSidebar(show){
+      if(typeof show === 'boolean') {
+        sidebar.classList.toggle('active', show);
+      } else {
+        sidebar.classList.toggle('active');
+      }
+      const active = sidebar.classList.contains('active');
+      backdrop.style.display = active ? 'block' : 'none';
+      sidebar.setAttribute('aria-hidden', !active);
+    }
+    menuBtn.addEventListener('click', ()=> toggleSidebar());
+    backdrop.addEventListener('click', ()=> toggleSidebar(false));
+    document.querySelectorAll('#sidebar a').forEach(a=>{
+      a.addEventListener('click', (e)=>{
+        e.preventDefault();
+        // small nav effect: close sidebar
+        toggleSidebar(false);
+      });
+    });
+
+    // fake user info load from localStorage token (safe)
+    function loadUserInfo(){
+      try{
+        const token = localStorage.getItem('authToken');
+        if(!token) throw 'no-token';
+        // try parse jwt-like base64 payload ( only)
+        const parts = token.split('.');
+        if(parts.length >= 2){
+          const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+          document.getElementById('sidebarUsername').textContent = payload.username || 'User';
+          document.getElementById('sidebarRole').textContent = payload.role || 'Member';
+          return;
+        }
+      }catch(e){
+        // fallback
+        document.getElementById('sidebarUsername').textContent = 'Guest';
+        document.getElementById('sidebarRole').textContent = 'Visitor';
+      }
+    }
+    loadUserInfo();
+
+    // logout (only)
+    document.getElementById('logoutBtn').addEventListener('click', ()=>{
+      localStorage.removeItem('authToken');
+      document.getElementById('sidebarUsername').textContent = 'Guest';
+      document.getElementById('sidebarRole').textContent = 'Visitor';
+      toggleSidebar(false);
+      // optionally show a small modal
+      showModal('Logged out', 'You have been logged out.');
+    });
+
+    // custom select behaviour
+    const select = document.getElementById('methodSelect');
+    const head = document.getElementById('methodHead');
+    const list = document.getElementById('methodList');
+    const label = document.getElementById('methodLabel');
+    let currentMethod = 'Rvnz_crash';
+
+    head.addEventListener('click', ()=>{
+      const visible = list.style.display === 'block';
+      list.style.display = visible ? 'none' : 'block';
+      head.setAttribute('aria-expanded', String(!visible));
+      list.setAttribute('aria-hidden', String(visible));
+    });
+    // close select on outside click
+    document.addEventListener('click', (ev)=>{
+      if(!select.contains(ev.target)){
+        list.style.display = 'none';
+        head.setAttribute('aria-expanded', 'false');
+        list.setAttribute('aria-hidden', 'true');
+      }
+    });
+    list.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        currentMethod = btn.dataset.value;
+        label.textContent = btn.textContent;
+        list.style.display = 'none';
+      });
+    });
+
+    // validation and send simulation
+    const targetInput = document.getElementById('target');
+    const sendBtn = document.getElementById('sendBtn');
+    const modal = document.getElementById('modal');
+    const modalText = document.getElementById('modalText');
+    const okBtn = document.getElementById('okBtn');
+
+    function isValidNumber(s){
+      if(!s) return false;
+      const clean = s.replace(/[\s\-()]/g,'');
+      const justDigits = clean.replace(/^\+/, '');
+      return /^[0-9]{6,20}$/.test(justDigits);
+    }
+
+    function showModal(title, html){
+      document.getElementById('modalTitle').textContent = title;
+      modalText.innerHTML = html;
+      modal.style.display = 'flex';
+      modal.setAttribute('aria-hidden','false');
+    }
+    function hideModal(){ modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); }
+
+    sendBtn.addEventListener('click', ()=>{
+      const target = targetInput.value.trim();
+      if(!isValidNumber(target)){
+        showModal('Error', '<strong>Error:</strong> Nomor target tidak valid. Gunakan format angka (contoh: 6289...)');
+        return;
+      }
+      if(!currentMethod){
+        showModal('Error', '<strong>Error:</strong> Pilih metode terlebih dahulu.');
+        return;
+      }
+
+      // UI simulation only — no network call
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> SENDING...';
+
+      setTimeout(()=>{
+        const success = Math.random() > 0.12; // mostly success
+        if(success){
+          showModal('Success', `<strong>Success</strong><br>Target: <code>${escapeHtml(target)}</code><br>Metode: <code>${escapeHtml(currentMethod)}</code><br>Result: selesai.`);
+        } else {
+          showModal('Failed', `<strong>Failed</strong><br>Target: <code>${escapeHtml(target)}</code><br>Metode: <code>${escapeHtml(currentMethod)}</code><br>Result: error.`);
+        }
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane" style="transform:rotate(-20deg)"></i> SEND BUG';
+      }, 950);
+    });
+
+    okBtn.addEventListener('click', hideModal);
+    targetInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') sendBtn.click(); });
+
+    // small html-escape helper
+    function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    /* ---------------------------
+       Canvas particle background (red / purple-ish)
+       --------------------------- */
+    const canvas = document.getElementById('bg');
+    const ctx = canvas.getContext('2d');
+    function resizeCanvas(){
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const POINTS = Math.max(40, Math.floor((canvas.width * canvas.height) / 90000)); // adjust density
+    let points = [];
+    for(let i=0;i<POINTS;i++){
+      points.push({
+        x: Math.random()*canvas.width,
+        y: Math.random()*canvas.height,
+        vx: (Math.random()-0.5)*0.6,
+        vy: (Math.random()-0.5)*0.6,
+        r: 1 + Math.random()*2,
+        hue: 260 + Math.random()*40
+      });
+    }
+
+    function draw(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      // faint gradient background dots glow
+      for(const p of points){
+        p.x += p.vx; p.y += p.vy;
+        if(p.x < -10) p.x = canvas.width + 10;
+        if(p.x > canvas.width + 10) p.x = -10;
+        if(p.y < -10) p.y = canvas.height + 10;
+        if(p.y > canvas.height + 10) p.y = -10;
+
+        const grd = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,24);
+        grd.addColorStop(0, `hsla(${p.hue},90%,65%,0.08)`);
+        grd.addColorStop(0.4, `hsla(${p.hue},80%,55%,0.04)`);
+        grd.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r*6, 0, Math.PI*2); ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r,0,Math.PI*2);
+        ctx.fillStyle = `hsla(${p.hue},80%,58%,0.9)`;
+        ctx.fill();
+      }
+
+      // connect nearby
+      for(let i=0;i<points.length;i++){
+        for(let j=i+1;j<points.length;j++){
+          const dx = points[i].x - points[j].x;
+          const dy = points[i].y - points[j].y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if(dist < 140){
+            ctx.strokeStyle = `hsla(${points[i].hue},70%,55%,${1 - dist/140})`;
+            ctx.lineWidth = 0.6;
+            ctx.beginPath();
+            ctx.moveTo(points[i].x, points[i].y);
+            ctx.lineTo(points[j].x, points[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      requestAnimationFrame(draw);
+    }
+    draw();
+
+  </script>
+</body>
+</html>
